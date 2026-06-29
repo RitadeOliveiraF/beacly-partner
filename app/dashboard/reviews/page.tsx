@@ -181,25 +181,44 @@ export default function Reviews() {
         </div>
       </div>
 
+      {/* Digital Score */}
+      <div className="rounded-2xl bg-ocean text-white p-6 flex items-center gap-6">
+        <div className="flex h-20 w-20 flex-col items-center justify-center rounded-2xl bg-white/10 shrink-0">
+          <p className="text-3xl font-bold leading-none">{stats.digitalScore}</p>
+          <p className="text-[10px] opacity-60 mt-0.5">/100</p>
+        </div>
+        <div className="flex-1">
+          <p className="text-xs font-bold uppercase tracking-wider opacity-60">beacly Digital Score</p>
+          <p className="text-sm opacity-80 mt-0.5">Combina rating, volume de reviews, % de 5★ e taxa de resposta</p>
+          <div className="mt-2 flex gap-4 text-xs opacity-60">
+            <span>Rating: {stats.avg.toFixed(1)}/5</span>
+            <span>·</span>
+            <span>Volume: {stats.total} reviews</span>
+            <span>·</span>
+            <span>Resposta: {stats.responseRate}%</span>
+          </div>
+        </div>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-ocean text-white p-5">
-          <p className="text-xs font-bold uppercase tracking-wider opacity-60 mb-1">Rating médio</p>
+        <div className="rounded-2xl bg-branco border border-preto/8 p-5">
+          <p className="text-xs font-bold uppercase tracking-wider text-preto/30 mb-1">Rating médio</p>
           <div className="flex items-end gap-1.5">
-            <p className="text-4xl font-bold">{stats.avg.toFixed(1)}</p>
-            <Star className="h-5 w-5 fill-white mb-1" />
+            <p className="text-4xl font-bold text-preto">{stats.avg.toFixed(1)}</p>
+            <Star className="h-5 w-5 fill-signal text-signal mb-1" />
           </div>
-          <p className="mt-1 text-xs opacity-50">{stats.total} reviews totais</p>
+          <p className="mt-1 text-xs text-preto/40">{stats.total} reviews totais</p>
         </div>
         <div className="rounded-2xl bg-branco border border-preto/8 p-5">
           <p className="text-xs font-bold uppercase tracking-wider text-preto/30 mb-1">Reviews 5★</p>
           <p className="text-4xl font-bold text-preto">{stats.pct5}%</p>
           <p className="mt-1 text-xs text-preto/40">{reviews.filter(r => r.review_rating === 5).length} de {stats.total}</p>
         </div>
-        <div className={`rounded-2xl p-5 ${stats.noResponse.length > 0 ? "bg-amber-50 border border-amber-200" : "bg-branco border border-preto/8"}`}>
-          <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${stats.noResponse.length > 0 ? "text-amber-600" : "text-preto/30"}`}>Sem resposta</p>
-          <p className={`text-4xl font-bold ${stats.noResponse.length > 0 ? "text-amber-700" : "text-preto"}`}>{stats.noResponse.length}</p>
-          <p className={`mt-1 text-xs ${stats.noResponse.length > 0 ? "text-amber-600" : "text-preto/40"}`}>reviews por responder</p>
+        <div className={`rounded-2xl p-5 ${stats.responseRate < 30 ? "bg-amber-50 border border-amber-200" : "bg-branco border border-preto/8"}`}>
+          <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${stats.responseRate < 30 ? "text-amber-600" : "text-preto/30"}`}>Taxa de resposta</p>
+          <p className={`text-4xl font-bold ${stats.responseRate < 30 ? "text-amber-700" : "text-preto"}`}>{stats.responseRate}%</p>
+          <p className={`mt-1 text-xs ${stats.responseRate < 30 ? "text-amber-600" : "text-preto/40"}`}>{stats.respondedCount} de {stats.reviewsWithText} respondidas</p>
         </div>
         <div className={`rounded-2xl p-5 ${stats.negative.length > 0 ? "bg-red-50 border border-red-200" : "bg-branco border border-preto/8"}`}>
           <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${stats.negative.length > 0 ? "text-red-600" : "text-preto/30"}`}>Alertas</p>
@@ -342,11 +361,11 @@ export default function Reviews() {
               </p>
             </div>
           )}
-          {stats.noResponse.length > 0 && (
+          {stats.responseRate < 100 && (
             <div className="flex items-start gap-3">
               <MessageSquare className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
               <p className="text-sm text-amber-800">
-                <span className="font-bold">{stats.noResponse.length} review(s) sem resposta</span> — Responder a reviews positivas aumenta a percepção de cuidado e fideliza clientes.
+                <span className="font-bold">Taxa de resposta de {stats.responseRate}%</span> — {stats.reviewsWithText - stats.respondedCount} reviews por responder. Responder a reviews aumenta o beacly Digital Score e a percepção de cuidado pelos clientes.
               </p>
             </div>
           )}
