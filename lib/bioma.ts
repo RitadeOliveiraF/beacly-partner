@@ -1,0 +1,35 @@
+export const BIOMA = {
+  uuid: "4ea19741-4c58-43a7-9073-7b200c92bace",
+  name: "Bioma Restaurant",
+  ilha: "Pico",
+  address: "Foros, ER1, 9930-055 Lajes do Pico, Portugal",
+  phone: "+351 910 723 700",
+  website: "https://biomarestaurant.com",
+  instagram: "https://www.instagram.com/biomarestaurant.azores/",
+  facebook: "https://www.facebook.com/biomarestaurant.azores/",
+  tripadvisor: "https://www.tripadvisor.com/Restaurant_Review-g189130-d27748087-Reviews-Bioma_Restaurant-Lajes_do_Pico_Pico_Azores.html",
+  placeId: "ChIJ7zr_hEWpRwsRbB6uT8I8jEc",
+  googleMapsLink: "https://maps.google.com/maps?q=place_id:ChIJ7zr_hEWpRwsRbB6uT8I8jEc",
+  rating: 4.9,
+  reviewCount: 224,
+  photo: "https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=AaVGc3koH0t5jOfsB9YCSEbD5jjX_d3g8NlE7qM9KjVr4XFwZ2sYpKlMnOpQrStUvWxYz&key=AIzaSyBns34lcSb4hSE991qi57tbkLOJEgSYZiE",
+  aiSummary: "O Bioma Restaurant oferece uma experiência gastronómica excepcional centrada em ingredientes locais do Pico. Os chefs Rafael e Franco criam um menu de degustação que celebra o território açoriano, com referências a nível Michelin por parte dos visitantes. Um destino gastronómico único nos Açores.",
+  category: "Fine Dining",
+  beaclyUrl: "https://azorean-gastronomy.beacly.com/restaurant/4ea19741-4c58-43a7-9073-7b200c92bace",
+  reviews: [
+    { date: "2026-06-29", rating: 5, text: "Fine dining at its best! Not just a dinner, but a dinner experience. Michelin star worthy cuisine." },
+    { date: "2026-06-29", rating: 5, text: "The Michelin inspectors should pay this a visit. Great concept." },
+    { date: "2026-06-28", rating: 5, text: "One of the best meals we've ever had. Five-course tasting menu, every dish delicious." },
+    { date: "2026-06-27", rating: 5, text: "Get your reservations now — in 2-3 years the waitlist will be months long. Chef Rafael and Franco are exceptional." },
+    { date: "2026-06-26", rating: 5, text: "An exquisite meal by an inspiring team. Chef's table, 7 course dinner, locally sourced ingredients." },
+    { date: "2026-06-25", rating: 5, text: "Beautiful restaurant, young and professional staff and 2 wonderful chefs. Truly remarkable." },
+    { date: "2026-06-24", rating: 5, text: "A very warm welcome, attentive staff. Food was delicious and locally sourced." },
+    { date: "2026-06-23", rating: 5, text: "The chef spent a ton of time with us and shared his stories of the food and his island." },
+    { date: "2026-06-22", rating: 5, text: "An amazing restaurant true to their name. Chef's tasting menu was exceptional." },
+    { date: "2026-06-21", rating: 5, text: "Everything about this meal was fantastic. Thoughtful, natural touches. Food delicious." },
+  ],
+  keywords: {
+    positive: ["Menu degustação", "Ingredientes locais", "Chef Rafael & Franco", "Nível Michelin", "Experiência única", "Atum do Pico"],
+    attention: []
+  }
+}
