@@ -105,13 +105,35 @@ export default function Reviews() {
     const olderAvg = older.length ? older.reduce((a,m) => a+m.avg,0)/older.length : 0
     const trend = recentAvg > olderAvg + 0.05 ? "up" : recentAvg < olderAvg - 0.05 ? "down" : "stable"
 
+    // Análise por trimestre
+    const byQuarter: Record<string, number[]> = {}
+    withDate.forEach(r => {
+      const d = r.parsed
+      const q = Math.floor(d.getMonth() / 3) + 1
+      const key = `${d.getFullYear()}-Q${q}`
+      if (!byQuarter[key]) byQuarter[key] = []
+      byQuarter[key].push(r.review_rating)
+    })
+    const quarters = Object.entries(byQuarter)
+      .sort(([a],[b]) => a.localeCompare(b))
+      .map(([key, ratings]) => ({
+        label: key.replace("-", " "),
+        avg: parseFloat((ratings.reduce((a,b) => a+b,0)/ratings.length).toFixed(2)),
+        count: ratings.length
+      }))
+    const qoq = quarters.map((q, i) => {
+      if (i === 0) return { ...q, change: null as number | null }
+      const change = parseFloat((q.avg - quarters[i-1].avg).toFixed(2))
+      return { ...q, change }
+    })
+
     const googleCount = reviews.filter(r => r.source === "google").length
     const tripadvisorCount = reviews.filter(r => r.source === "tripadvisor").length
 
     const positiveWords = countPhrases(reviews.filter(r => r.review_rating >= 4), POSITIVE_PHRASES)
     const negativeWords = countPhrases(reviews.filter(r => r.review_rating <= 3), NEGATIVE_PHRASES)
 
-    return { total, avg, pct5, negative, noResponse, dist, evolution, trend, recentAvg, olderAvg, googleCount, tripadvisorCount, positiveWords, negativeWords }
+    return { total, avg, pct5, negative, noResponse, dist, evolution, trend, recentAvg, olderAvg, googleCount, tripadvisorCount, positiveWords, negativeWords, qoq }
   }, [reviews])
 
   const filtered = useMemo(() => {
@@ -230,6 +252,32 @@ export default function Reviews() {
           </div>
         </div>
       </div>
+
+      {/* Análise por trimestre */}
+      {stats.qoq.length > 0 && (
+        <div className="rounded-2xl bg-branco border border-preto/8 p-6">
+          <p className="text-xs font-bold uppercase tracking-wider text-preto/40 mb-1">Evolução trimestral (QoQ)</p>
+          <p className="text-[11px] text-preto/30 mb-4">Comparação trimestre a trimestre — apenas reviews com data exacta</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {stats.qoq.map((q, i) => (
+              <div key={i} className="rounded-xl bg-cream p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-preto/30">{q.label}</p>
+                <div className="flex items-end gap-1.5 mt-1">
+                  <p className="text-2xl font-bold text-preto">{q.avg}</p>
+                  <Star className="h-3.5 w-3.5 fill-signal text-signal mb-1" />
+                </div>
+                <p className="text-xs text-preto/40">{q.count} reviews</p>
+                {q.change !== null && (
+                  <div className={`mt-1.5 flex items-center gap-1 text-xs font-bold ${q.change > 0 ? "text-emerald-600" : q.change < 0 ? "text-red-500" : "text-preto/40"}`}>
+                    {q.change > 0 ? <TrendingUp className="h-3 w-3" /> : q.change < 0 ? <TrendingDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                    {q.change > 0 ? "+" : ""}{q.change} vs anterior
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Palavras mais mencionadas */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
