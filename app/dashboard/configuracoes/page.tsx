@@ -28,6 +28,7 @@ export default function Configuracoes() {
         <div className="rounded-2xl bg-branco border border-preto/8 p-6 space-y-4">
           <p className="text-xs font-bold uppercase tracking-wider text-preto/40">Presença digital</p>
           {[
+            { label: "Google Maps", href: BIOMA.googleMapsLink, icon: MapPin },
             { label: "Website", href: BIOMA.website, icon: Globe },
             { label: "Instagram", href: BIOMA.instagram, icon: Instagram },
             { label: "Facebook", href: BIOMA.facebook, icon: Facebook },
