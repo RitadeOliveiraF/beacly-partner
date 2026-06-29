@@ -129,11 +129,21 @@ export default function Reviews() {
 
     const googleCount = reviews.filter(r => r.source === "google").length
     const tripadvisorCount = reviews.filter(r => r.source === "tripadvisor").length
+    const respondedCount = reviews.filter(r => r.has_owner_response).length
+    const reviewsWithText = reviews.filter(r => r.review_text).length
+    const responseRate = reviewsWithText > 0 ? Math.round((respondedCount / reviewsWithText) * 100) : 0
+
+    // Digital Score (0-100): combina rating, volume, % positivas, e taxa de resposta
+    const ratingScore = (avg / 5) * 40 // até 40 pontos
+    const volumeScore = Math.min((total / 300) * 25, 25) // até 25 pontos, satura aos 300 reviews
+    const positiveScore = (pct5 / 100) * 20 // até 20 pontos
+    const responseScore = (responseRate / 100) * 15 // até 15 pontos
+    const digitalScore = Math.round(ratingScore + volumeScore + positiveScore + responseScore)
 
     const positiveWords = countPhrases(reviews.filter(r => r.review_rating >= 4), POSITIVE_PHRASES)
     const negativeWords = countPhrases(reviews.filter(r => r.review_rating <= 3), NEGATIVE_PHRASES)
 
-    return { total, avg, pct5, negative, noResponse, dist, evolution, trend, recentAvg, olderAvg, googleCount, tripadvisorCount, positiveWords, negativeWords, qoq }
+    return { total, avg, pct5, negative, noResponse, dist, evolution, trend, recentAvg, olderAvg, googleCount, tripadvisorCount, positiveWords, negativeWords, qoq, respondedCount, responseRate, digitalScore, reviewsWithText }
   }, [reviews])
 
   const filtered = useMemo(() => {
