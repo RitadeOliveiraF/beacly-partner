@@ -2,10 +2,9 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { supabase, BIOMA_PLACE_ID } from "@/lib/supabase"
-import { BIOMA } from "@/lib/bioma"
 import {
   Star, AlertTriangle, CheckCircle, MessageSquare, TrendingUp,
-  TrendingDown, Minus, Loader2, Filter, ChevronDown
+  TrendingDown, Minus, Loader2, Globe
 } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts"
 
@@ -14,12 +13,45 @@ interface Review {
   review_text: string | null
   review_date: string
   has_owner_response: boolean
+  source: string
 }
 
-function parseDate(d: string) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Date(d)
-  return new Date()
+const STOPWORDS = new Set(["the","a","an","and","or","but","is","was","were","are","be","been","to","of","in","on","at","for","with","this","that","we","i","it","they","you","our","their","its","as","very","had","have","has","not","no","so","all","just","also","one","from","by","each","what","which","who","more","most","some","any","if","then","than","when","where","there","do","did","does","will","would","could","should","can","about","into","up","out","over","under","again","food","restaurant","place","experience","dinner","lunch","meal"])
+
+function extractWords(text: string): string[] {
+  return text.toLowerCase()
+    .replace(/[^a-záàâãéèêíïóôõöúçñ\s]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 3 && !STOPWORDS.has(w))
 }
+
+const POSITIVE_PHRASES = [
+  "michelin", "tasting menu", "chef's table", "local ingredients", "chefs rafael", "franco", "sea view", "ocean view",
+  "attentive", "warm welcome", "exceptional", "fine dining", "fresh", "locally sourced", "wine pairing",
+  "spectacular", "unforgettable", "passionate", "professional staff", "intimate", "terrace"
+]
+const NEGATIVE_PHRASES = [
+  "expensive", "overpriced", "disappointed", "smell", "basic", "small portion", "slow service", "no flavor", "bland"
+]
+
+function countPhrases(reviews: Review[], phrases: string[]) {
+  const counts: Record<string, number> = {}
+  reviews.forEach(r => {
+    if (!r.review_text) return
+    const lower = r.review_text.toLowerCase()
+    phrases.forEach(p => {
+      if (lower.includes(p)) counts[p] = (counts[p] || 0) + 1
+    })
+  })
+  return Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,8)
+}
+
+function parseDate(d: string): Date | null {
+  if (/^\d{4}-\d{2}-\d{2}/.test(d)) return new Date(d)
+  return null // relative dates like "3 days ago" excluded from time series
+}
+
+const MONTHS_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
 
 export default function Reviews() {
   const [reviews, setReviews] = useState<Review[]>([])
@@ -29,10 +61,10 @@ export default function Reviews() {
   useEffect(() => {
     supabase
       .from("azorean_reviews")
-      .select("review_rating, review_text, review_date, has_owner_response")
+      .select("review_rating, review_text, review_date, has_owner_response, source")
       .eq("google_place_id", BIOMA_PLACE_ID)
       .order("review_date", { ascending: false })
-      .then(({ data }) => { setReviews(data || []); setLoading(false) })
+      .then(({ data }) => { setReviews((data as Review[]) || []); setLoading(false) })
   }, [])
 
   const stats = useMemo(() => {
@@ -48,30 +80,38 @@ export default function Reviews() {
       pct: Math.round((reviews.filter(r => r.review_rating === s).length / total) * 100)
     }))
 
-    // Evolução mensal
+    const withDate = reviews.map(r => ({ ...r, parsed: parseDate(r.review_date) })).filter(r => r.parsed) as (Review & { parsed: Date })[]
     const byMonth: Record<string, number[]> = {}
-    reviews.forEach(r => {
-      const d = parseDate(r.review_date)
+    withDate.forEach(r => {
+      const d = r.parsed
       const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`
       if (!byMonth[key]) byMonth[key] = []
       byMonth[key].push(r.review_rating)
     })
     const evolution = Object.entries(byMonth)
       .sort(([a],[b]) => a.localeCompare(b))
-      .map(([month, ratings]) => ({
-        month: month.slice(5) + "/" + month.slice(2,4),
-        avg: parseFloat((ratings.reduce((a,b) => a+b,0)/ratings.length).toFixed(2)),
-        count: ratings.length
-      }))
+      .map(([key, ratings]) => {
+        const [y, m] = key.split("-")
+        return {
+          month: `${MONTHS_PT[parseInt(m)-1]} ${y.slice(2)}`,
+          avg: parseFloat((ratings.reduce((a,b) => a+b,0)/ratings.length).toFixed(2)),
+          count: ratings.length
+        }
+      })
 
-    // Tendência: últimos 3 meses vs anteriores
     const recent = evolution.slice(-3)
     const older = evolution.slice(-6, -3)
     const recentAvg = recent.length ? recent.reduce((a,m) => a+m.avg,0)/recent.length : 0
     const olderAvg = older.length ? older.reduce((a,m) => a+m.avg,0)/older.length : 0
     const trend = recentAvg > olderAvg + 0.05 ? "up" : recentAvg < olderAvg - 0.05 ? "down" : "stable"
 
-    return { total, avg, pct5, negative, noResponse, dist, evolution, trend, recentAvg, olderAvg }
+    const googleCount = reviews.filter(r => r.source === "google").length
+    const tripadvisorCount = reviews.filter(r => r.source === "tripadvisor").length
+
+    const positiveWords = countPhrases(reviews.filter(r => r.review_rating >= 4), POSITIVE_PHRASES)
+    const negativeWords = countPhrases(reviews.filter(r => r.review_rating <= 3), NEGATIVE_PHRASES)
+
+    return { total, avg, pct5, negative, noResponse, dist, evolution, trend, recentAvg, olderAvg, googleCount, tripadvisorCount, positiveWords, negativeWords }
   }, [reviews])
 
   const filtered = useMemo(() => {
@@ -86,7 +126,6 @@ export default function Reviews() {
       <Loader2 className="h-6 w-6 animate-spin text-ocean" />
     </div>
   )
-
   if (!stats) return null
 
   const TrendIcon = stats.trend === "up" ? TrendingUp : stats.trend === "down" ? TrendingDown : Minus
@@ -94,13 +133,23 @@ export default function Reviews() {
 
   return (
     <div className="p-8 space-y-6">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-preto/30">Reviews</p>
-        <h1 className="mt-1 text-2xl font-serif font-bold text-preto">Inteligência de reputação</h1>
-        <p className="text-sm text-preto/50">{stats.total} reviews · Google + TripAdvisor</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-preto/30">Reviews</p>
+          <h1 className="mt-1 text-2xl font-serif font-bold text-preto">Inteligência de reputação</h1>
+          <p className="text-sm text-preto/50">{stats.total} reviews totais</p>
+        </div>
+        <div className="flex gap-2">
+          <span className="flex items-center gap-1.5 rounded-lg bg-branco border border-preto/8 px-3 py-1.5 text-xs font-bold text-preto/60">
+            <Globe className="h-3.5 w-3.5 text-[#4285F4]" />Google: {stats.googleCount}
+          </span>
+          <span className="flex items-center gap-1.5 rounded-lg bg-branco border border-preto/8 px-3 py-1.5 text-xs font-bold text-preto/60">
+            <Star className="h-3.5 w-3.5 text-[#00AF87]" />TripAdvisor: {stats.tripadvisorCount}
+          </span>
+        </div>
       </div>
 
-      {/* ── KPIs ── */}
+      {/* KPIs */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="rounded-2xl bg-ocean text-white p-5">
           <p className="text-xs font-bold uppercase tracking-wider opacity-60 mb-1">Rating médio</p>
@@ -127,16 +176,17 @@ export default function Reviews() {
         </div>
       </div>
 
-      {/* ── Evolução + Tendência ── */}
+      {/* Evolução + Distribuição */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="xl:col-span-2 rounded-2xl bg-branco border border-preto/8 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-preto/40">Evolução do rating</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-bold uppercase tracking-wider text-preto/40">Evolução do rating por mês</p>
             <div className={`flex items-center gap-1.5 text-xs font-bold ${trendColor}`}>
               <TrendIcon className="h-4 w-4" />
               {stats.trend === "up" ? "Em crescimento" : stats.trend === "down" ? "Em queda" : "Estável"}
             </div>
           </div>
+          <p className="text-[11px] text-preto/30 mb-3">Apenas reviews com data exacta (TripAdvisor)</p>
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={stats.evolution}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0ede8" />
@@ -144,8 +194,8 @@ export default function Reviews() {
               <YAxis domain={[1,5]} ticks={[1,2,3,4,5]} tick={{ fontSize: 11, fill: "#1a1a1a80" }} />
               <Tooltip
                 contentStyle={{ borderRadius: 12, border: "1px solid #e8e4de", fontSize: 12 }}
-                formatter={(v: number) => [`${v} ★`, "Rating médio"]}
-                labelFormatter={(l) => `Mês: ${l}`}
+                formatter={(v: number, name: string, props: any) => [`${v} ★  (${props.payload.count} reviews)`, "Rating médio"]}
+                labelFormatter={(l) => `${l}`}
               />
               <Line type="monotone" dataKey="avg" stroke="#0B2D6B" strokeWidth={2.5} dot={{ r: 4, fill: "#0B2D6B" }} />
             </LineChart>
@@ -171,17 +221,58 @@ export default function Reviews() {
           <div className="mt-4 pt-4 border-t border-preto/5 space-y-2">
             <div className="flex justify-between text-xs">
               <span className="text-preto/40">Últimos 3 meses</span>
-              <span className="font-bold text-preto">{stats.recentAvg.toFixed(2)} ★</span>
+              <span className="font-bold text-preto">{stats.recentAvg > 0 ? stats.recentAvg.toFixed(2) + " ★" : "—"}</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-preto/40">3 meses anteriores</span>
-              <span className="font-bold text-preto">{stats.olderAvg.toFixed(2)} ★</span>
+              <span className="font-bold text-preto">{stats.olderAvg > 0 ? stats.olderAvg.toFixed(2) + " ★" : "—"}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Alertas accionáveis ── */}
+      {/* Palavras mais mencionadas */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="rounded-2xl bg-branco border border-preto/8 p-6">
+          <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 mb-4">Mais mencionado — Positivo</p>
+          {stats.positiveWords.length > 0 ? (
+            <div className="space-y-2">
+              {stats.positiveWords.map(([word, count]) => (
+                <div key={word} className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-preto capitalize flex-1">{word}</span>
+                  <div className="h-1.5 rounded-full bg-emerald-100 overflow-hidden w-24">
+                    <div className="h-full rounded-full bg-emerald-500" style={{ width: `${(count / stats.positiveWords[0][1]) * 100}%` }} />
+                  </div>
+                  <span className="text-xs font-bold text-emerald-600 w-6 text-right">{count}x</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="text-sm text-preto/40">Sem dados suficientes</p>}
+        </div>
+        <div className="rounded-2xl bg-branco border border-preto/8 p-6">
+          <p className="text-xs font-bold uppercase tracking-wider text-red-500 mb-4">Mais mencionado — A melhorar</p>
+          {stats.negativeWords.length > 0 ? (
+            <div className="space-y-2">
+              {stats.negativeWords.map(([word, count]) => (
+                <div key={word} className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-preto capitalize flex-1">{word}</span>
+                  <div className="h-1.5 rounded-full bg-red-100 overflow-hidden w-24">
+                    <div className="h-full rounded-full bg-red-500" style={{ width: `${(count / stats.negativeWords[0][1]) * 100}%` }} />
+                  </div>
+                  <span className="text-xs font-bold text-red-500 w-6 text-right">{count}x</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-emerald-600">
+              <CheckCircle className="h-4 w-4" />
+              <p className="text-sm font-semibold">Nenhuma queixa recorrente identificada</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Alertas */}
       {(stats.negative.length > 0 || stats.noResponse.length > 0) && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 space-y-3">
           <p className="text-xs font-bold uppercase tracking-wider text-amber-700">Acções recomendadas</p>
@@ -189,7 +280,7 @@ export default function Reviews() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
               <p className="text-sm text-amber-800">
-                <span className="font-bold">{stats.negative.length} review(s) negativa(s)</span> — Responde publicamente com empatia e explica o contexto. Uma resposta bem feita transforma o impacto negativo.
+                <span className="font-bold">{stats.negative.length} review(s) negativa(s)</span> — Responde publicamente com empatia. Uma resposta bem feita transforma o impacto negativo.
               </p>
             </div>
           )}
@@ -201,29 +292,16 @@ export default function Reviews() {
               </p>
             </div>
           )}
-          {stats.pct5 === 100 && (
-            <div className="flex items-start gap-3">
-              <TrendingUp className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-800">
-                <span className="font-bold">Potencial de crescimento</span> — Com {stats.pct5}% de 5★, o Bioma tem perfil para aparecer em listas editoriais de fine dining nos Açores. Volume de reviews é o próximo objectivo.
-              </p>
-            </div>
-          )}
         </div>
       )}
 
-      {/* ── Lista de reviews ── */}
+      {/* Lista */}
       <div className="rounded-2xl bg-branco border border-preto/8 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-preto/5">
-          <p className="text-xs font-bold uppercase tracking-wider text-preto/40">
-            Reviews ({filtered.length})
-          </p>
+          <p className="text-xs font-bold uppercase tracking-wider text-preto/40">Reviews ({filtered.length})</p>
           <div className="flex gap-2">
             {([
-              ["all", "Todas"],
-              ["positive", "Positivas"],
-              ["negative", "Negativas"],
-              ["no_response", "Sem resposta"],
+              ["all", "Todas"], ["positive", "Positivas"], ["negative", "Negativas"], ["no_response", "Sem resposta"],
             ] as const).map(([val, label]) => (
               <button key={val} onClick={() => setFilter(val)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${filter === val ? "bg-ocean text-white" : "bg-cream text-preto/50 hover:text-preto"}`}>
@@ -236,27 +314,28 @@ export default function Reviews() {
           {filtered.map((r, i) => (
             <div key={i} className={`px-6 py-4 ${r.review_rating <= 3 ? "bg-red-50/50" : ""}`}>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-0.5">
                     {[...Array(5)].map((_, j) => (
                       <Star key={j} className={`h-3.5 w-3.5 ${j < r.review_rating ? "fill-signal text-signal" : "fill-preto/10 text-preto/10"}`} />
                     ))}
                   </div>
-                  <span className="text-xs text-preto/30">{r.review_date.slice(0,10)}</span>
+                  <span className="text-xs text-preto/30">{r.review_date}</span>
+                  <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${r.source === "google" ? "bg-blue-50 text-[#4285F4]" : "bg-emerald-50 text-[#00AF87]"}`}>
+                    {r.source === "google" ? "Google" : "TripAdvisor"}
+                  </span>
                   {r.review_rating <= 3 && (
                     <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600">Atenção</span>
                   )}
                 </div>
                 {r.has_owner_response
-                  ? <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600"><CheckCircle className="h-3 w-3" />Respondido</span>
+                  ? <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 shrink-0"><CheckCircle className="h-3 w-3" />Respondido</span>
                   : r.review_text
-                    ? <span className="flex items-center gap-1 text-[10px] font-bold text-amber-500"><MessageSquare className="h-3 w-3" />Sem resposta</span>
+                    ? <span className="flex items-center gap-1 text-[10px] font-bold text-amber-500 shrink-0"><MessageSquare className="h-3 w-3" />Sem resposta</span>
                     : null
                 }
               </div>
-              {r.review_text && (
-                <p className="text-sm text-preto/70 leading-relaxed">{r.review_text}</p>
-              )}
+              {r.review_text && <p className="text-sm text-preto/70 leading-relaxed">{r.review_text}</p>}
             </div>
           ))}
         </div>
