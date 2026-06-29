@@ -1,8 +1,9 @@
 import { BIOMA } from "@/lib/bioma"
-import { Star, TrendingUp, Eye, Users, ArrowUpRight, ExternalLink, Globe, Instagram, Facebook } from "lucide-react"
+import { Star, TrendingUp, Eye, Users, ArrowUpRight, ExternalLink, Globe, Instagram, Facebook, MapPin } from "lucide-react"
 
 export default function Dashboard() {
   const links = [
+    { label: "Google Maps", href: BIOMA.googleMapsLink, icon: MapPin, active: !!BIOMA.googleMapsLink },
     { label: "Website", href: BIOMA.website, icon: Globe, active: !!BIOMA.website },
     { label: "Instagram", href: BIOMA.instagram, icon: Instagram, active: !!BIOMA.instagram },
     { label: "Facebook", href: BIOMA.facebook, icon: Facebook, active: !!BIOMA.facebook },
