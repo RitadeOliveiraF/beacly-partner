@@ -58,7 +58,7 @@ export default function Dashboard() {
           <p className="text-3xl font-bold">{BIOMA.rating}</p>
           <p className="mt-1 text-xs opacity-50">{BIOMA.reviewCount} reviews no Google</p>
           <div className="mt-2 text-xs opacity-60 flex items-center gap-1">
-            <Info className="h-3 w-3" />Maior fine dining nos Açores com este volume
+            <Info className="h-3 w-3" />#1 fine dining nos Açores (4.9★, ≥100 rev.)
           </div>
         </div>
 
@@ -70,7 +70,7 @@ export default function Dashboard() {
           <p className="text-3xl font-bold text-preto">{loading ? "…" : total}</p>
           <p className="mt-1 text-xs text-preto/40">Google ({loading ? "…" : googleCount}) + TripAdvisor ({loading ? "…" : tripadvisorCount})</p>
           <div className="mt-2 text-xs text-emerald-600 flex items-center gap-1 font-bold">
-            <ArrowUpRight className="h-3.5 w-3.5" />Mais reviews no Pico
+            <ArrowUpRight className="h-3.5 w-3.5" />Mais reviews em fine dining no Pico
           </div>
         </div>
 
