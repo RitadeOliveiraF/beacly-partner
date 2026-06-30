@@ -123,7 +123,8 @@ export default function Reviews() {
     const older = evolution.slice(-6,-3)
     const recentAvg = recent.length ? recent.reduce((a,m)=>a+m.avg,0)/recent.length : 0
     const olderAvg = older.length ? older.reduce((a,m)=>a+m.avg,0)/older.length : 0
-    const trend = recentAvg > olderAvg + 0.05 ? "up" : recentAvg < olderAvg - 0.05 ? "down" : "stable"
+    const trendDiff = parseFloat((recentAvg - olderAvg).toFixed(2))
+    const trend = trendDiff > 0.15 ? "up" : trendDiff < -0.15 ? "down" : "stable"
 
     const byQuarter: Record<string, number[]> = {}
     withDate.forEach(rv => {
@@ -294,7 +295,7 @@ export default function Reviews() {
             <p className="text-xs font-bold uppercase tracking-wider text-preto/40">Evolução do rating por mês</p>
             <div className={`flex items-center gap-1.5 text-xs font-bold ${trendColor}`}>
               <TrendIcon className="h-4 w-4" />
-              {stats.trend === "up" ? "Em crescimento" : stats.trend === "down" ? "Em queda" : "Estável"}
+              {stats.trend === "up" ? "A melhorar" : stats.trend === "down" ? "Ligeira descida" : "Estável"}
             </div>
           </div>
           <p className="text-[11px] text-preto/30 mb-3">Reviews com data exacta (TripAdvisor + Google convertido)</p>
@@ -302,7 +303,7 @@ export default function Reviews() {
             <LineChart data={stats.evolution}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0ede8" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#1a1a1a80" }} />
-              <YAxis domain={[1,5]} ticks={[1,2,3,4,5]} tick={{ fontSize: 11, fill: "#1a1a1a80" }} />
+              <YAxis domain={["dataMin - 0.2", "dataMax + 0.1"]} tick={{ fontSize: 11, fill: "#1a1a1a80" }} tickFormatter={(v) => v.toFixed(1)} />
               <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e8e4de", fontSize: 12 }}
                 formatter={(v: number, _: string, props: any) => [`${v} ★  (${props.payload.count} reviews)`, "Rating médio"]}
                 labelFormatter={(l) => `${l}`} />
