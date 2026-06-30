@@ -1,78 +1,108 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { supabase, BIOMA_PLACE_ID, BIOMA_UUID } from "@/lib/supabase"
 import { BIOMA } from "@/lib/bioma"
-import { Star, TrendingUp, Eye, Users, ArrowUpRight, ExternalLink, Globe, Instagram, Facebook, MapPin } from "lucide-react"
+import { Star, ArrowUpRight, ExternalLink, Globe, Instagram, Facebook, MapPin, Loader2, Info } from "lucide-react"
+
+interface Review {
+  review_rating: number
+  review_text: string | null
+  review_date: string
+  source: string
+}
 
 export default function Dashboard() {
+  const [reviews, setReviews] = useState<Review[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase
+      .from("azorean_reviews")
+      .select("review_rating, review_text, review_date, source")
+      .eq("google_place_id", BIOMA_PLACE_ID)
+      .order("review_date", { ascending: false })
+      .limit(300)
+      .then(({ data }) => { setReviews((data as Review[]) || []); setLoading(false) })
+  }, [])
+
+  const total = reviews.length
+  const avg = total > 0 ? (reviews.reduce((a, r) => a + r.review_rating, 0) / total).toFixed(1) : "—"
+  const googleCount = reviews.filter(r => r.source === "google").length
+  const tripadvisorCount = reviews.filter(r => r.source === "tripadvisor").length
+  const latest = reviews.filter(r => r.review_text).slice(0, 4)
+
   const links = [
     { label: "Google Maps", href: BIOMA.googleMapsLink, icon: MapPin, active: !!BIOMA.googleMapsLink },
     { label: "Website", href: BIOMA.website, icon: Globe, active: !!BIOMA.website },
     { label: "Instagram", href: BIOMA.instagram, icon: Instagram, active: !!BIOMA.instagram },
     { label: "Facebook", href: BIOMA.facebook, icon: Facebook, active: !!BIOMA.facebook },
-    { label: "TripAdvisor", href: BIOMA.tripadvisor, icon: Star, active: !!BIOMA.tripadvisor },
   ]
+  const activeLinks = links.filter(l => l.active).length
 
   return (
     <div className="p-8 space-y-6">
-      {/* header */}
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-preto/30">Dashboard</p>
         <h1 className="mt-1 text-2xl font-serif font-bold text-preto">Visão geral</h1>
-        <p className="text-sm text-preto/50">Desempenho do {BIOMA.name} na plataforma beacly</p>
+        <p className="text-sm text-preto/50">Desempenho do {BIOMA.name} na plataforma beacly Açores</p>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs — apenas dados reais */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="rounded-2xl bg-ocean text-white p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider opacity-60">Rating Google</span>
+            <Star className="h-4 w-4 fill-white opacity-60" />
+          </div>
+          <p className="text-3xl font-bold">{BIOMA.rating}</p>
+          <p className="mt-1 text-xs opacity-50">{BIOMA.reviewCount} reviews no Google</p>
+          <div className="mt-2 text-xs opacity-60 flex items-center gap-1">
+            <Info className="h-3 w-3" />Maior fine dining nos Açores com este volume
+          </div>
+        </div>
+
         <div className="rounded-2xl bg-branco border border-preto/8 p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-preto/30">Rating Google</span>
-            <Star className="h-4 w-4 text-signal fill-signal" />
+            <span className="text-xs font-bold uppercase tracking-wider text-preto/30">Reviews totais</span>
+            <Star className="h-4 w-4 text-preto/20" />
           </div>
-          <p className="text-3xl font-bold text-preto">{BIOMA.rating}</p>
-          <p className="mt-1 text-xs text-preto/40">{BIOMA.reviewCount} reviews</p>
-          <div className="mt-2 flex items-center gap-1 text-emerald-600 text-xs font-bold">
-            <ArrowUpRight className="h-3.5 w-3.5" />#1 no Pico
+          <p className="text-3xl font-bold text-preto">{loading ? "…" : total}</p>
+          <p className="mt-1 text-xs text-preto/40">Google ({loading ? "…" : googleCount}) + TripAdvisor ({loading ? "…" : tripadvisorCount})</p>
+          <div className="mt-2 text-xs text-emerald-600 flex items-center gap-1 font-bold">
+            <ArrowUpRight className="h-3.5 w-3.5" />Mais reviews no Pico
           </div>
         </div>
 
         <div className="rounded-2xl bg-branco border border-preto/8 p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-preto/30">beacly Score</span>
-            <TrendingUp className="h-4 w-4 text-ocean" />
+            <Info className="h-4 w-4 text-preto/20" />
           </div>
-          <p className="text-3xl font-bold text-preto">9.8</p>
-          <p className="mt-1 text-xs text-preto/40">Escala 0–10</p>
-          <div className="mt-2 flex items-center gap-1 text-emerald-600 text-xs font-bold">
-            <ArrowUpRight className="h-3.5 w-3.5" />Top 3 Açores
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-branco border border-preto/8 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-preto/30">Visibilidade</span>
-            <Eye className="h-4 w-4 text-preto/30" />
-          </div>
-          <p className="text-3xl font-bold text-preto">Alto</p>
-          <p className="mt-1 text-xs text-preto/40">Fine dining · Pico</p>
-          <div className="mt-2 flex items-center gap-1 text-emerald-600 text-xs font-bold">
-            <ArrowUpRight className="h-3.5 w-3.5" />Destaque beacly
+          <p className="text-3xl font-bold text-preto">
+            {loading ? "…" : Math.round(((BIOMA.rating / 5) * 40) + Math.min((total / 300) * 25, 25) + ((reviews.filter(r => r.review_rating === 5).length / (total || 1)) * 20))}
+          </p>
+          <p className="mt-1 text-xs text-preto/40">Escala 0–85 (sem taxa de resposta)</p>
+          <div className="mt-2 text-xs text-preto/40 flex items-center gap-1">
+            <Info className="h-3 w-3" />Rating · Volume · % 5★
           </div>
         </div>
 
         <div className="rounded-2xl bg-branco border border-preto/8 p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-preto/30">Presença digital</span>
-            <Globe className="h-4 w-4 text-preto/30" />
+            <Globe className="h-4 w-4 text-preto/20" />
           </div>
-          <p className="text-3xl font-bold text-preto">4/4</p>
+          <p className="text-3xl font-bold text-preto">{activeLinks}/4</p>
           <p className="mt-1 text-xs text-preto/40">Canais activos</p>
-          <div className="mt-2 flex items-center gap-1 text-emerald-600 text-xs font-bold">
+          <div className="mt-2 text-xs text-emerald-600 font-bold flex items-center gap-1">
             <ArrowUpRight className="h-3.5 w-3.5" />100% completo
           </div>
         </div>
       </div>
 
-      {/* 2 colunas: AI summary + presença digital */}
+      {/* AI Summary + Presença digital */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* AI Summary */}
         <div className="rounded-2xl bg-branco border border-preto/8 p-6">
           <div className="flex items-center gap-2 mb-4">
             <div className="h-6 w-6 rounded-lg bg-signal/10 flex items-center justify-center">
@@ -88,7 +118,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Presença digital */}
         <div className="rounded-2xl bg-branco border border-preto/8 p-6">
           <p className="text-xs font-bold uppercase tracking-wider text-preto/40 mb-4">Presença Digital</p>
           <div className="space-y-3">
@@ -114,22 +143,33 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Últimas reviews */}
+      {/* Últimas reviews — da BD */}
       <div className="rounded-2xl bg-branco border border-preto/8 p-6">
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs font-bold uppercase tracking-wider text-preto/40">Últimas reviews</p>
           <a href="/dashboard/reviews" className="text-xs font-bold text-ocean hover:underline">Ver todas →</a>
         </div>
-        <div className="space-y-3">
-          {BIOMA.reviews.slice(0, 4).map((r, i) => (
-            <div key={i} className="flex items-start gap-3 rounded-xl bg-cream p-3">
-              <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
-                {[...Array(r.rating)].map((_, j) => <Star key={j} className="h-3 w-3 fill-signal text-signal" />)}
+        {loading ? (
+          <div className="flex items-center justify-center h-20">
+            <Loader2 className="h-5 w-5 animate-spin text-ocean" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {latest.map((r, i) => (
+              <div key={i} className="flex items-start gap-3 rounded-xl bg-cream p-3">
+                <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
+                  {[...Array(r.review_rating)].map((_, j) => <Star key={j} className="h-3 w-3 fill-signal text-signal" />)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-preto/70 leading-relaxed line-clamp-2">{r.review_text}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${r.source === "google" ? "bg-blue-50 text-[#4285F4]" : "bg-emerald-50 text-[#00AF87]"}`}>
+                  {r.source === "google" ? "G" : "TA"}
+                </span>
               </div>
-              <p className="text-sm text-preto/70 leading-relaxed line-clamp-2">{r.text}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
